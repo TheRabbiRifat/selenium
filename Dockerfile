@@ -15,13 +15,10 @@ COPY requirements.txt .
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
-# Install additional dependencies for WeasyPrint
+# Install wkhtmltopdf (necessary for pdfkit)
 RUN apt-get update && apt-get install -y \
-    libpango-1.0-0 \
-    libpangocairo-1.0-0 \
-    libgdk-pixbuf2.0-0 \
-    libffi-dev \
-    libcairo2
+    wkhtmltopdf \
+    && apt-get clean
 
 # Copy the entire project into the container
 COPY . .
