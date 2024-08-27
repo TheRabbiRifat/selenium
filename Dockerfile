@@ -4,6 +4,7 @@ FROM python:3.11-slim
 # Set environment variables to ensure that Python runs in a consistent environment
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+ENV XDG_RUNTIME_DIR=/tmp/runtime-root
 
 # Set the working directory inside the container
 WORKDIR /app
@@ -15,7 +16,7 @@ COPY requirements.txt .
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
-# Install wkhtmltopdf (necessary for pdfkit)
+# Install wkhtmltopdf and dependencies
 RUN apt-get update && apt-get install -y \
     wkhtmltopdf \
     && apt-get clean
