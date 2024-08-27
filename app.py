@@ -1,41 +1,25 @@
 import base64
 import fitz  # PyMuPDF
 from flask import Flask, request, jsonify
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager
+from bs4 import BeautifulSoup
+import requests
 from weasyprint import HTML
 
 app = Flask(__name__)
 
 def get_webpage_pdf(url):
-    # Set up Selenium with options
-    chrome_options = Options()
-    chrome_options.add_argument("--disable-gpu")
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--disable-dev-shm-usage")
-    chrome_options.add_argument("--disable-blink-features=AutomationControlled")
-    chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3")
-    chrome_options.add_argument("--ignore-certificate-errors")
-    chrome_options.add_argument("--headless")
-
-    # Initialize WebDriver
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+    # Make an HTTP request to the specified URL
+    response = requests.get(url, headers={
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+    }, verify=False)
     
-    # Open the webpage
-    driver.get(url)
-    
-    # Get the page source (HTML)
-    page_source = driver.page_source
+    # Parse the HTML content using BeautifulSoup
+    soup = BeautifulSoup(response.content, 'html.parser')
     
     # Convert the HTML to a PDF using WeasyPrint
-    html = HTML(string=page_source)
+    html = HTML(string=str(soup))
     pdf_file_path = "output.pdf"
     html.write_pdf(pdf_file_path)
-    
-    # Close the browser
-    driver.quit()
     
     return pdf_file_path
 
@@ -88,4 +72,3 @@ def scrape_to_pdf():
 
 if __name__ == '__main__':
     app.run(debug=True)
-  
