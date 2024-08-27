@@ -4,7 +4,6 @@ FROM python:3.11-slim
 # Set environment variables to ensure that Python runs in a consistent environment
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
-ENV XDG_RUNTIME_DIR=/tmp/runtime-root
 
 # Set the working directory inside the container
 WORKDIR /app
@@ -25,7 +24,7 @@ RUN apt-get update && apt-get install -y \
 COPY . .
 
 # Expose the port Flask will run on
-EXPOSE 7777
+EXPOSE 8080
 
 # Define the command to run the Flask application
 CMD ["python", "app.py"]
