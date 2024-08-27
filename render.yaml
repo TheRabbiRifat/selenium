@@ -10,5 +10,3 @@ services:
         value: "1"
       - key: PYTHONUNBUFFERED
         value: "1"
-    dockerfilePath: ./Dockerfile
-    
