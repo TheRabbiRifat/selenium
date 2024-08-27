@@ -3,23 +3,19 @@ import fitz  # PyMuPDF
 from flask import Flask, request, jsonify
 from bs4 import BeautifulSoup
 import requests
-from weasyprint import HTML
+import pdfkit
 
 app = Flask(__name__)
 
 def get_webpage_pdf(url):
-    # Make an HTTP request to the specified URL
+    # Fetch the webpage content
     response = requests.get(url, headers={
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
     }, verify=False)
     
-    # Parse the HTML content using BeautifulSoup
-    soup = BeautifulSoup(response.content, 'html.parser')
-    
-    # Convert the HTML to a PDF using WeasyPrint
-    html = HTML(string=str(soup))
+    # Convert HTML content to PDF
     pdf_file_path = "output.pdf"
-    html.write_pdf(pdf_file_path)
+    pdfkit.from_string(response.text, pdf_file_path)
     
     return pdf_file_path
 
