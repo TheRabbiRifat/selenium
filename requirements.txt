@@ -3,3 +3,4 @@ flask-session
 requests
 pdfkit
 PyMuPDF
+beautifulsoup4
