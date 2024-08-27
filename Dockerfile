@@ -24,7 +24,7 @@ RUN apt-get update && apt-get install -y \
 COPY . .
 
 # Expose the port Flask will run on
-EXPOSE 5000
+EXPOSE 7777
 
 # Define the command to run the Flask application
 CMD ["python", "app.py"]
