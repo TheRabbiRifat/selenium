@@ -61,22 +61,19 @@ def convert_to_pdf():
         if not first_image_base64:
             return jsonify({'error': 'No images found in the PDF'}), 400
 
-        # Create response object
+        # Fetch cookies from the response
+        cookies = session['requests_session'].cookies.get_dict()
+
+        # Prepare the response data
         response_data = {
             'status': 'success',
             'captcha': first_image_base64,  # Provide the first image as 'captcha'
-            'hidden_inputs': hidden_inputs  # Include hidden inputs in the response
+            'hidden_inputs': hidden_inputs,  # Include hidden inputs in the response
+            'cookies': cookies  # Include cookies in the response
         }
-        
-        # Fetch cookies from the response
-        cookies = response.cookies.get_dict()
 
-        # Add cookies to the response
-        response = make_response(jsonify(response_data))
-        for key, value in cookies.items():
-            response.set_cookie(key, value)
-
-        return response
+        # Create and return the response
+        return make_response(jsonify(response_data))
 
     except Exception as e:
         return jsonify({'error': 'Conversion Error', 'details': str(e)}), 500
