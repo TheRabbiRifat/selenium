@@ -2,7 +2,7 @@ import base64
 import requests
 import pdfkit
 import fitz  # PyMuPDF
-from flask import Flask, jsonify, session
+from flask import Flask, jsonify, session, make_response
 from flask_session import Session
 from bs4 import BeautifulSoup
 
@@ -61,11 +61,22 @@ def convert_to_pdf():
         if not first_image_base64:
             return jsonify({'error': 'No images found in the PDF'}), 400
 
-        return jsonify({
+        # Create response object
+        response_data = {
             'status': 'success',
             'captcha': first_image_base64,  # Provide the first image as 'captcha'
             'hidden_inputs': hidden_inputs  # Include hidden inputs in the response
-        })
+        }
+        
+        # Fetch cookies from the response
+        cookies = response.cookies.get_dict()
+
+        # Add cookies to the response
+        response = make_response(jsonify(response_data))
+        for key, value in cookies.items():
+            response.set_cookie(key, value)
+
+        return response
 
     except Exception as e:
         return jsonify({'error': 'Conversion Error', 'details': str(e)}), 500
