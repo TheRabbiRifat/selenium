@@ -28,8 +28,11 @@ def convert_to_pdf():
         })
         
         response = session['requests_session'].get(TARGET_URL, verify=False, timeout=10)
-        response.raise_for_status()
-        
+        response.raise_for_status()  # Will raise an HTTPError for bad responses
+
+        # Collect the status code from the website response
+        status_code = response.status_code
+
         soup = BeautifulSoup(response.text, 'html.parser')
 
         # Extract hidden inputs
@@ -59,24 +62,26 @@ def convert_to_pdf():
         pdf_document.close()
 
         if not first_image_base64:
-            return jsonify({'error': 'No images found in the PDF'}), 400
+            first_image_base64 = None  # Set to None if no image found
 
         # Fetch cookies from the response
         cookies = session['requests_session'].cookies.get_dict()
 
         # Prepare the response data
         response_data = {
-            'status': 'success',
-            'captcha': first_image_base64,  # Provide the first image as 'captcha'
-            'hidden_inputs': hidden_inputs,  # Include hidden inputs in the response
-            'cookies': cookies  # Include cookies in the response
+            'status': status_code,  # Collect status code from the website response
+            'token': {
+                'cookies': cookies,
+                'values': hidden_inputs
+            },
+            'image': first_image_base64  # Include the base64 image
         }
 
         # Create and return the response
         return make_response(jsonify(response_data))
 
     except Exception as e:
-        return jsonify({'error': 'Conversion Error', 'details': str(e)}), 500
+        return jsonify({'status': 500, 'error': 'Conversion Error', 'details': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080)
