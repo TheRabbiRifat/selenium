@@ -2,7 +2,8 @@ import base64
 import requests
 import pdfkit
 import fitz  # PyMuPDF
-from flask import Flask, jsonify, session, make_response
+import random
+from flask import Flask, jsonify, session, make_response, request
 from flask_session import Session
 from bs4 import BeautifulSoup
 
@@ -17,14 +18,44 @@ Session(app)
 # The URL that will always be scraped
 TARGET_URL = 'https://everify.bdris.gov.bd'
 
+# List of various User Agents to choose from
+USER_AGENTS = [
+    # Windows
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.159 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Gecko/20100101 Firefox/91.0',
+    
+    # MacOS
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.2 Safari/605.1.15',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36',
+    
+    # iOS
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 14_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.1 Mobile/15E148 Safari/604.1',
+    'Mozilla/5.0 (iPad; CPU OS 14_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.1 Mobile/15E148 Safari/604.1',
+    
+    # Android
+    'Mozilla/5.0 (Linux; Android 10; SM-G975F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Mobile Safari/537.36',
+    'Mozilla/5.0 (Linux; Android 10; SM-N975U) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Mobile Safari/537.36',
+    
+    # Linux
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36',
+    'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:89.0) Gecko/20100101 Firefox/89.0',
+    
+    # Older Browsers
+    'Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; AS; rv:11.0) like Gecko',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/30.0.1599.101 Safari/537.36',
+]
+
 @app.route('/convert-to-pdf', methods=['POST'])
 def convert_to_pdf():
     try:
         # Start a session to fetch the webpage content
         session.clear()
         session['requests_session'] = requests.Session()
+
+        # Select a random user agent from the list
+        random_user_agent = random.choice(USER_AGENTS)
         session['requests_session'].headers.update({
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.113 Safari/537.36'
+            'User-Agent': random_user_agent
         })
         
         response = session['requests_session'].get(TARGET_URL, verify=False, timeout=10)
@@ -67,6 +98,9 @@ def convert_to_pdf():
         # Fetch cookies from the response
         cookies = session['requests_session'].cookies.get_dict()
 
+        # Get client IP address (the IP address from which the request is made)
+        client_ip = request.remote_addr
+
         # Prepare the response data
         response_data = {
             'status': status_code,  # Collect status code from the website response
@@ -74,11 +108,13 @@ def convert_to_pdf():
                 'cookies': cookies,
                 'values': hidden_inputs
             },
-            'image': first_image_base64  # Include the base64 image
+            'image': first_image_base64,  # Include the base64 image
+            'client_ip': client_ip,  # Include the client's IP address
+            'user_agent': random_user_agent  # Include the selected user agent
         }
 
-        # Create and return the response
-        return make_response(jsonify(response_data))
+        # Create and return the response with JSON formatted with indent
+        return make_response(jsonify(response_data), 200)
 
     except Exception as e:
         return jsonify({'status': 500, 'error': 'Conversion Error', 'details': str(e)}), 500
