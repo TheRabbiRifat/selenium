@@ -45,7 +45,7 @@ USER_AGENTS = [
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/30.0.1599.101 Safari/537.36',
 ]
 
-@app.route('/convert-to-pdf', methods=['POST'])
+@app.route('/get_captcha', methods=['POST'])
 def convert_to_pdf():
     try:
         # Start a session to fetch the webpage content
