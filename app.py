@@ -23,7 +23,7 @@ TARGET_URL = 'https://everify.bdris.gov.bd'
 
 # Proxy and user-agent configurations
 PROXY_FILE_PATH = 'proxies.txt'
-PROXY_VERIFY_INTERVAL = 60  # Time in seconds between proxy verifications
+PROXY_VERIFY_INTERVAL = 300  # Time in seconds between proxy verifications
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0.3 Safari/605.1.15",
@@ -73,7 +73,7 @@ def verify_proxy(proxy):
         "http": f"http://{username}:{password}@{ip_port}",
         "https": f"https://{username}:{password}@{ip_port}"
     }
-    test_url = "http://www.google.com"
+    test_url = "https://everify.bdris.gov.bd"
     try:
         response = requests.get(test_url, proxies=proxies, timeout=5)
         return response.status_code == 200
