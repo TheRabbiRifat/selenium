@@ -3,6 +3,7 @@ import requests
 import pdfkit
 import fitz  # PyMuPDF
 import random
+import json
 from flask import Flask, jsonify, session, make_response, request
 from flask_session import Session
 from bs4 import BeautifulSoup
@@ -39,13 +40,9 @@ USER_AGENTS = [
     # Linux
     'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36',
     'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:89.0) Gecko/20100101 Firefox/89.0',
-    
-    # Older Browsers
-    'Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; AS; rv:11.0) like Gecko',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/30.0.1599.101 Safari/537.36',
 ]
 
-@app.route('/convert-to-pdf', methods=['POST'])
+@app.route('/get_captcha', methods=['POST'])
 def convert_to_pdf():
     try:
         # Start a session to fetch the webpage content
@@ -98,8 +95,8 @@ def convert_to_pdf():
         # Fetch cookies from the response
         cookies = session['requests_session'].cookies.get_dict()
 
-        # Get client IP address (the IP address from which the request is made)
-        client_ip = request.remote_addr
+        # Get the origin IP (the IP that made the request)
+        origin_ip = request.remote_addr
 
         # Prepare the response data
         response_data = {
@@ -108,13 +105,13 @@ def convert_to_pdf():
                 'cookies': cookies,
                 'values': hidden_inputs
             },
-            'image': first_image_base64,  # Include the base64 image
-            'client_ip': client_ip,  # Include the client's IP address
-            'user_agent': random_user_agent  # Include the selected user agent
+            'captcha': first_image_base64,  # Include the base64 image
+            'user_agent': random_user_agent,  # Include the selected user agent
+            'origin_ip': origin_ip  # Include the origin IP
         }
 
         # Create and return the response with JSON formatted with indent
-        return make_response(jsonify(response_data), 200)
+        return make_response(json.dumps(response_data, indent=4), 200)
 
     except Exception as e:
         return jsonify({'status': 500, 'error': 'Conversion Error', 'details': str(e)}), 500
