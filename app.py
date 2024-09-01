@@ -5,10 +5,10 @@ import fitz  # PyMuPDF
 import random
 import json
 import time
+import threading
 from flask import Flask, jsonify, session, make_response, request
 from flask_session import Session
 from bs4 import BeautifulSoup
-import threading
 
 app = Flask(__name__)
 
@@ -22,40 +22,39 @@ Session(app)
 TARGET_URL = 'https://everify.bdris.gov.bd'
 
 # Proxy and user-agent configurations
-PROXY_SOURCE_URL = 'https://api.proxyscrape.com/v2/?request=displayproxies&protocol=socks4&timeout=10000&country=all&ssl=all&anonymity=all'
-PROXY_VERIFY_INTERVAL = 60  # Time in seconds between proxy verifications
+PROXY_SOURCE_URL = 'https://proxy.webshare.io/api/v2/proxy/list/download/gevbqvfqrtivohnhzsxhmcpfxihjhpdznjkzgxry/-/any/username/direct/-/'
+PROXY_VERIFY_INTERVAL = 300  # Time in seconds between proxy verifications
 USER_AGENTS = [
-    # Windows
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.159 Safari/537.36',
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Gecko/20100101 Firefox/91.0',
-    
-    # MacOS
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.2 Safari/605.1.15',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36',
-    
-    # iOS
-    'Mozilla/5.0 (iPhone; CPU iPhone OS 14_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.1 Mobile/15E148 Safari/604.1',
-    'Mozilla/5.0 (iPad; CPU OS 14_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.1 Mobile/15E148 Safari/604.1',
-    
-    # Android
-    'Mozilla/5.0 (Linux; Android 10; SM-G975F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Mobile Safari/537.36',
-    'Mozilla/5.0 (Linux; Android 10; SM-N975U) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Mobile Safari/537.36',
-    
-    # Linux
-    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36',
-    'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:89.0) Gecko/20100101 Firefox/89.0',
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0.3 Safari/605.1.15",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) Gecko/20100101 Firefox/89.0",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36",
+    "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:88.0) Gecko/20100101 Firefox/88.0",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 11_2_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.114 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.114 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.192 Safari/537.36"
 ]
 
 # Global variable to store verified proxies
 verified_proxies = []
 last_proxy_check_time = 0
 
+# Function to download and read proxies from a file
+def download_and_read_proxies():
+    try:
+        response = requests.get(PROXY_SOURCE_URL)
+        proxy_list = response.text.splitlines()
+        return proxy_list
+    except Exception as e:
+        print(f"Error downloading proxy list: {e}")
+        return []
+
 # Fetch and verify proxies
 def fetch_and_verify_proxies():
     global verified_proxies, last_proxy_check_time
     while True:
         try:
-            proxy_list = requests.get(PROXY_SOURCE_URL).text.splitlines()
+            proxy_list = download_and_read_proxies()
             verified_proxies = []
             for proxy in proxy_list:
                 if verify_proxy(proxy):
@@ -69,8 +68,12 @@ def fetch_and_verify_proxies():
 
 # Function to verify if a proxy is alive
 def verify_proxy(proxy):
-    test_url = "http://www.google.com"
-    proxies = {"http": f"socks4://{proxy}", "https": f"socks4://{proxy}"}
+    ip_port, username, password = proxy.split(":")
+    proxies = {
+        "http": f"http://{username}:{password}@{ip_port}",
+        "https": f"https://{username}:{password}@{ip_port}"
+    }
+    test_url = "https://everify.bdris.gov.bd"
     try:
         response = requests.get(test_url, proxies=proxies, timeout=5)
         return response.status_code == 200
@@ -95,9 +98,10 @@ def convert_to_pdf():
 
         if verified_proxies:
             proxy = random.choice(verified_proxies)
+            ip_port, username, password = proxy.split(":")
             session['requests_session'].proxies = {
-                "http": f"socks4://{proxy}",
-                "https": f"socks4://{proxy}"
+                "http": f"http://{username}:{password}@{ip_port}",
+                "https": f"https://{username}:{password}@{ip_port}"
             }
 
         # Select a random user agent from the list
