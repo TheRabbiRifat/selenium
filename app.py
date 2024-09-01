@@ -4,9 +4,11 @@ import pdfkit
 import fitz  # PyMuPDF
 import random
 import json
+import time
 from flask import Flask, jsonify, session, make_response, request
 from flask_session import Session
 from bs4 import BeautifulSoup
+import threading
 
 app = Flask(__name__)
 
@@ -19,7 +21,9 @@ Session(app)
 # The URL that will always be scraped
 TARGET_URL = 'https://everify.bdris.gov.bd'
 
-# List of various User Agents to choose from
+# Proxy and user-agent configurations
+PROXY_SOURCE_URL = 'https://api.proxyscrape.com/v2/?request=displayproxies&protocol=socks4&timeout=10000&country=all&ssl=all&anonymity=all'
+PROXY_VERIFY_INTERVAL = 60  # Time in seconds between proxy verifications
 USER_AGENTS = [
     # Windows
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.159 Safari/537.36',
@@ -42,21 +46,68 @@ USER_AGENTS = [
     'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:89.0) Gecko/20100101 Firefox/89.0',
 ]
 
+# Global variable to store verified proxies
+verified_proxies = []
+last_proxy_check_time = 0
+
+# Fetch and verify proxies
+def fetch_and_verify_proxies():
+    global verified_proxies, last_proxy_check_time
+    while True:
+        try:
+            proxy_list = requests.get(PROXY_SOURCE_URL).text.splitlines()
+            verified_proxies = []
+            for proxy in proxy_list:
+                if verify_proxy(proxy):
+                    verified_proxies.append(proxy)
+            last_proxy_check_time = time.time()
+            with open('/tmp/verified_proxies.txt', 'w') as f:
+                f.write("\n".join(verified_proxies))
+        except Exception as e:
+            print(f"Error fetching/verifying proxies: {e}")
+        time.sleep(PROXY_VERIFY_INTERVAL)
+
+# Function to verify if a proxy is alive
+def verify_proxy(proxy):
+    test_url = "http://www.google.com"
+    proxies = {"http": f"socks4://{proxy}", "https": f"socks4://{proxy}"}
+    try:
+        response = requests.get(test_url, proxies=proxies, timeout=5)
+        return response.status_code == 200
+    except:
+        return False
+
+# Background thread to keep proxies up to date
+threading.Thread(target=fetch_and_verify_proxies, daemon=True).start()
+
 @app.route('/get_captcha', methods=['POST'])
 def convert_to_pdf():
     try:
-        # Start a session to fetch the webpage content
+        global last_proxy_check_time, verified_proxies
+
+        # Ensure proxies are verified within the last minute
+        if time.time() - last_proxy_check_time > PROXY_VERIFY_INTERVAL:
+            fetch_and_verify_proxies()
+
+        # Start a session to fetch the webpage content using a proxy
         session.clear()
         session['requests_session'] = requests.Session()
+
+        if verified_proxies:
+            proxy = random.choice(verified_proxies)
+            session['requests_session'].proxies = {
+                "http": f"socks4://{proxy}",
+                "https": f"socks4://{proxy}"
+            }
 
         # Select a random user agent from the list
         random_user_agent = random.choice(USER_AGENTS)
         session['requests_session'].headers.update({
             'User-Agent': random_user_agent
         })
-        
+
         response = session['requests_session'].get(TARGET_URL, verify=False, timeout=10)
-        response.raise_for_status()  # Will raise an HTTPError for bad responses
+        response.raise_for_status()
 
         # Collect the status code from the website response
         status_code = response.status_code
@@ -100,14 +151,15 @@ def convert_to_pdf():
 
         # Prepare the response data
         response_data = {
-            'status': status_code,  # Collect status code from the website response
+            'status': status_code,
             'token': {
                 'cookies': cookies,
                 'values': hidden_inputs
             },
-            'captcha': first_image_base64,  # Include the base64 image
-            'user_agent': random_user_agent,  # Include the selected user agent
-            'origin_ip': origin_ip  # Include the origin IP
+            'captcha': first_image_base64,
+            'user_agent': random_user_agent,
+            'origin_ip': origin_ip,
+            'proxy': session['requests_session'].proxies  # Include the proxy used
         }
 
         # Create and return the response with JSON formatted with indent
@@ -115,6 +167,14 @@ def convert_to_pdf():
 
     except Exception as e:
         return jsonify({'status': 500, 'error': 'Conversion Error', 'details': str(e)}), 500
+
+@app.route('/get_verified_proxies', methods=['GET'])
+def get_verified_proxies():
+    try:
+        global verified_proxies
+        return jsonify({'verified_proxies': verified_proxies}), 200
+    except Exception as e:
+        return jsonify({'status': 500, 'error': 'Error fetching proxies', 'details': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080)
