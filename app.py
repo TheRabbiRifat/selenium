@@ -3,9 +3,14 @@ import requests
 import pdfkit
 import fitz  # PyMuPDF
 import random
+import urllib3
 from flask import Flask, jsonify, session, make_response, request
 from flask_session import Session
 from bs4 import BeautifulSoup
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
+
+# Suppress InsecureRequestWarning
+urllib3.disable_warnings(InsecureRequestWarning)
 
 app = Flask(__name__)
 
@@ -97,7 +102,6 @@ def convert_to_pdf():
 
         # Fetch cookies from the response
         cookies = session['requests_session'].cookies.get_dict()
-
 
         # Prepare the response data
         response_data = {
