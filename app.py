@@ -3,13 +3,14 @@ import requests
 import pdfkit
 import fitz  # PyMuPDF
 import random
+import re
 import urllib3
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
 from flask import Flask, jsonify, session, make_response, request
 from flask_session import Session
 from bs4 import BeautifulSoup
-from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
-# Suppress InsecureRequestWarning
+# Disable warnings about insecure requests
 urllib3.disable_warnings(InsecureRequestWarning)
 
 app = Flask(__name__)
@@ -53,6 +54,18 @@ USER_AGENTS = [
 @app.route('/get_captcha', methods=['POST'])
 def convert_to_pdf():
     try:
+        # Retrieve and validate input parameters
+        birth_date = request.form.get('BirthDate', '').strip()
+        ubrn = request.form.get('UBRN', '').strip()
+
+        # Validate BirthDate (yyyy-MM-dd format)
+        if not re.match(r'^\d{4}-(0[1-9]|1[012])-(0[1-9]|[12][0-9]|3[01])$', birth_date):
+            return jsonify({'status': 400, 'error': 'Invalid BirthDate format. Expected format: yyyy-MM-dd.'}), 400
+
+        # Validate UBRN (17 digits)
+        if not re.match(r'^\d{17}$', ubrn):
+            return jsonify({'status': 400, 'error': 'Invalid UBRN format. Expected 17 digits only.'}), 400
+
         # Start a session to fetch the webpage content
         session.clear()
         session['requests_session'] = requests.Session()
