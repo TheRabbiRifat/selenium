@@ -22,8 +22,8 @@ Session(app)
 TARGET_URL = 'https://everify.bdris.gov.bd'
 
 # Proxy and user-agent configurations
-PROXY_SOURCE_URL = 'https://proxy.webshare.io/api/v2/proxy/list/download/gevbqvfqrtivohnhzsxhmcpfxihjhpdznjkzgxry/-/any/username/direct/-/'
-PROXY_VERIFY_INTERVAL = 300  # Time in seconds between proxy verifications
+PROXY_FILE_PATH = 'proxies.txt'
+PROXY_VERIFY_INTERVAL = 60  # Time in seconds between proxy verifications
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0.3 Safari/605.1.15",
@@ -39,14 +39,14 @@ USER_AGENTS = [
 verified_proxies = []
 last_proxy_check_time = 0
 
-# Function to download and read proxies from a file
-def download_and_read_proxies():
+# Function to read proxies from the file
+def read_proxies_from_file():
     try:
-        response = requests.get(PROXY_SOURCE_URL)
-        proxy_list = response.text.splitlines()
+        with open(PROXY_FILE_PATH, 'r') as f:
+            proxy_list = f.read().splitlines()
         return proxy_list
     except Exception as e:
-        print(f"Error downloading proxy list: {e}")
+        print(f"Error reading proxy file: {e}")
         return []
 
 # Fetch and verify proxies
@@ -54,7 +54,7 @@ def fetch_and_verify_proxies():
     global verified_proxies, last_proxy_check_time
     while True:
         try:
-            proxy_list = download_and_read_proxies()
+            proxy_list = read_proxies_from_file()
             verified_proxies = []
             for proxy in proxy_list:
                 if verify_proxy(proxy):
@@ -73,7 +73,7 @@ def verify_proxy(proxy):
         "http": f"http://{username}:{password}@{ip_port}",
         "https": f"https://{username}:{password}@{ip_port}"
     }
-    test_url = "https://everify.bdris.gov.bd"
+    test_url = "http://www.google.com"
     try:
         response = requests.get(test_url, proxies=proxies, timeout=5)
         return response.status_code == 200
